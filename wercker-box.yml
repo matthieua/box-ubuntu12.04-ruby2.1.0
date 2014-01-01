@@ -1,0 +1,99 @@
+name: ubuntu12.04-ruby2.1.0
+version: 0.0.1
+inherits: wercker/ubuntu12.04-webessentials@0.0.12
+type: main
+platform: ubuntu@12.04
+packages:
+  - ruby@2.1.0
+keywords:
+  - ruby
+script: |
+  export RUBYVERSION=2.1.0
+  sudo apt-get update
+  sudo apt-get install git zlib1g-dev libreadline-dev libqtwebkit-dev
+  sudo apt-get remove ruby1.9.1
+  cd $HOME
+  mkdir rubyinstall
+  cd rubyinstall
+  wget ftp://ftp.ruby-lang.org/pub/ruby/2.1/ruby-$RUBYVERSION.tar.gz
+  tar xzvf ruby-$RUBYVERSION.tar.gz
+  cd ruby-$RUBYVERSION
+  ./configure --with-readline-dir=/usr/include/readline --with-openssl-dir=/usr/include/openssl
+  make
+  make test
+  sudo make install
+  cd $HOME
+  rm -fr rubyinstall
+  echo "gem: --no-rdoc --no-ri" >> $HOME/.gemrc
+  sudo gem install bundler -v "1.3"
+
+  echo "RAILS_ENV=test" | sudo tee -a /etc/environment
+  echo "RACK_ENV=test" | sudo tee -a /etc/environment
+
+box-detect:
+  priority : 150
+  version :
+  detect:
+    - inFiles:
+      - Gemfile : ruby "2.1.0"
+
+default-build:
+  ruby-on-rails:
+    priority: 100
+    detect:
+      - files:
+          - config
+    text-to-append: |
+      # Build definition
+      # See the Rails section on the wercker devcenter:
+      # http://devcenter.wercker.com/articles/languages/ruby/settingup-rails4.html
+      # You will want to define your database as follows:
+      # services:
+      #   - wercker/postgresql
+      # See more about services on our devcenter:
+      # http://devcenter.wercker.com/articles/services/
+      build:
+          steps:
+              # A step that executes `bundle install` command
+              - bundle-install
+              # A step that prepares the database.yml using the database in services
+              #- rails-database-yml
+              # A custom script step, name value is used in the UI
+              # and the code value contains the command that get executed
+              - script:
+                  name: echo ruby information
+                  code: |
+                      echo "ruby version $(ruby --version) running"
+                      echo "from location $(which ruby)"
+                      echo -p "gem list: $(gem list)"
+              # Add more steps here:
+              # - script:
+              #        name: rspec
+              #        code: bundle exec rspec
+  ruby:
+    priority : 50
+    detect:
+      - default: true
+    text-to-append: |
+      # Build definition
+      build:
+        # The steps that will be executed on build
+        # See the Ruby section on the wercker devcenter:
+        # http://devcenter.wercker.com/articles/languages/ruby.html
+        steps:
+          # A step that executes `bundle install` command
+          - bundle-install
+
+          # A custom script step, name value is used in the UI
+          # and the code value contains the command that get executed
+          - script:
+              name: echo ruby information
+              code: |
+                echo "ruby version $(ruby --version) running"
+                echo "from location $(which ruby)"
+                echo -p "gem list: $(gem list)"
+
+          # Add more steps here:
+          #- script:
+          #    name: rspec
+          #    code: bundle exec rspec
